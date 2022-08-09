@@ -6,14 +6,8 @@ const express = require('express');
 const app = express();
 
 
-app.get('/', (req, res)=> {
-
-    res.json({
-        ok : true,
-        msg: 'Todo salió como se esperaba',
-        uid : 1234
-    })
-});
+// rutas
+app.use('/api/auth', require('./routes/auth'));
 
 
 //correr la app
