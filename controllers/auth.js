@@ -1,6 +1,7 @@
 const { request, response } = require('express');
-const Usuario = require('../models/Usuario');
 const bcrypt = require('bcryptjs');
+const Usuario = require('../models/Usuario');
+const { generarJWT } = require('../helpers/jwt');
 
 const crearUsuario = async (req = request, res = response )=> {
     
@@ -25,6 +26,7 @@ const crearUsuario = async (req = request, res = response )=> {
         dbUser.password = bcrypt.hashSync( password, salt );
 
         // Generar el JWT
+        const token = await generarJWT(dbUser.id, name);
 
 
         // crear Usuario de base de datos
@@ -36,8 +38,9 @@ const crearUsuario = async (req = request, res = response )=> {
         return res.status(201).json({
             ok : true,
             uid : dbUser.id,
-            name
-        })
+            name,
+            token
+        });
         
     } catch (error) {
         console.log(error);
@@ -51,14 +54,53 @@ const crearUsuario = async (req = request, res = response )=> {
 };
 
 
-const loginUsuario = (req = request, res = response)=> {
+const loginUsuario = async (req = request, res = response)=> {
 
    const { email, password } = req.body;
 
-    return res.json({
+   try {
+
+    const dbUser = await Usuario.findOne({ email });
+
+    if(!dbUser) {
+        return res.status(400).json({
+            ok : false,
+            msg : 'El correo no existe'
+        });
+    }
+
+    // confirmar si el password hace match
+    const validPassword = bcrypt.compareSync( password, dbUser.password );
+
+    if(!validPassword) { 
+
+        return res.status(400).json({
+            ok : false,
+            msg : 'El password no es válido'
+        })
+
+    }
+
+    //generar el JWT
+    const token = await generarJWT(dbUser.id, dbUser.name); 
+
+    // respuesta del servicio
+    return res.status(201).json({
         ok : true,
-        msg : 'Login usuario'
-    });
+        uid : dbUser.id,
+        name : dbUser.name,
+        token
+    })
+    
+   } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            ok : false,
+            msg : 'Error HB34D - comunique con el administrador'
+        });
+   }
+
+   
 };
 
 const revalidarToken = (req = request, res = response)=> {
